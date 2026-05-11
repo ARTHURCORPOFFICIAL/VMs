@@ -18,7 +18,7 @@
 </head>
 <body>
     <h1>🖥️ VMs in Browser (v86)</h1>
-    <p>Android 4.4 KitKat • Using your uploaded ISO</p>
+    <p>Android 4.4 KitKat • File in same directory</p>
     
     <div class="controls">
         <button onclick="startAndroid44()">🚀 Start Android 4.4 KitKat</button>
@@ -49,9 +49,9 @@
             if (emulator) emulator.destroy();
             
             const screen = document.getElementById('screen_container');
-            setStatus("Downloading & Booting Android 4.4... (1-5 minutes)", "#0ff");
+            setStatus("Loading Android 4.4 from repo... (first time will take a while)", "#0ff");
             progressEl.style.display = 'block';
-            progressBar.style.width = '0%';
+            progressBar.style.width = '5%';
 
             emulator = new V86Starter({
                 wasm_path: "https://copy.sh/v86/v86.wasm",
@@ -65,7 +65,7 @@
 
             emulator.add_listener("download-progress", (p) => {
                 if (p.total) {
-                    const percent = Math.floor((p.loaded / p.total) * 100);
+                    const percent = Math.floor((p.loaded / p.total) * 100) || 10;
                     progressBar.style.width = percent + '%';
                 }
             });
@@ -74,14 +74,14 @@
                 progressBar.style.width = '100%';
                 setTimeout(() => {
                     progressEl.style.display = 'none';
-                    setStatus("✅ Booted! Click inside screen", "#0f0");
+                    setStatus("✅ Booted! Click inside the black screen", "#0f0");
                 }, 800);
             });
         }
 
         function startAndroid44() {
-            const url = "https://raw.githubusercontent.com/ARTHURCORPOFFICIAL/VMs/main/android-x86-4.4-r2.iso";
-            createEmulator(url);
+            // Relative path - same directory as index.html
+            createEmulator("./android-x86-4.4-r2.iso");
         }
 
         function loadCustomISO() {
