@@ -12,6 +12,7 @@
         button { padding:12px 20px; font-size:14px; background:#111; color:#0f0; border:1px solid #0f0; cursor:pointer; border-radius: 4px; flex: 1 1 auto; max-width: 200px; }
         button:active { background:#0f0; color:#000; }
         
+        /* Mobile-Friendly Container [cite: 26] */
         #screen_container { border:2px solid #0f0; margin:10px auto; background:#000; width: 100%; max-width: 800px; aspect-ratio: 4/3; box-shadow:0 0 20px #0f0; position: relative; overflow: hidden; }
         #screen_container canvas { width: 100% !important; height: 100% !important; object-fit: contain; }
         
@@ -19,7 +20,7 @@
         #progress { width:90%; height:12px; background:#222; margin:10px auto; border:1px solid #0f0; display:none; border-radius:6px; overflow:hidden; }
         #progress-bar { height:100%; width:0%; background:linear-gradient(to right, #0f0, #00ffff); transition:width 0.2s linear; }
 
-        /* Log Overlay */
+        /* Log Overlay [cite: 27] */
         #log_container { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; text-align: left; padding: 20px; box-sizing: border-box; }
         #log_output { width: 100%; height: 90%; background: #000; color: #0f0; border: 1px solid #0f0; overflow-y: scroll; font-size: 12px; padding: 10px; white-space: pre-wrap; }
         .close-hint { color: #888; font-size: 11px; margin-top: 5px; text-align: center; }
@@ -58,35 +59,23 @@
         function setStatus(msg, color = '#ff0') {
             statusEl.textContent = msg; [cite: 2]
             statusEl.style.color = color; [cite: 2]
-            addLog(`[STATUS] ${msg}`);
-        }
-
-        function addLog(msg) {
-            const entry = document.createElement('div');
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logOutput.appendChild(entry);
-            logOutput.scrollTop = logOutput.scrollHeight;
         }
 
         function toggleLogs() {
-            logContainer.style.display = logContainer.style.display === 'block' ? 'none' : 'block';
+            logContainer.style.display = logContainer.style.display === 'block' ? 'none' : 'block'; [cite: 36]
         }
 
+        // Boot from local file in main branch [cite: 31, 34]
         function startAndroid44() {
-            // Using a relative path for the local file in the same branch [cite: 14, 15]
-            // Note: Ensure the extension (.iso) matches your actual filename [cite: 17, 18]
-            const fileName = "android-x86-4.4-RC1.iso";
-            createEmulator(`./${fileName}`);
+            createEmulator("./android-x86-4.4-RC1.iso"); 
         }
 
         function createEmulator(cdromUrl) {
-            if (emulator) {
-                emulator.destroy(); [cite: 5]
-            }
+            if (emulator) emulator.destroy(); [cite: 5]
             
             const screen = document.getElementById('screen_container');
             setStatus("Fetching file data...", "#0ff");
-            progressEl.style.display = 'block';
+            progressEl.style.display = 'block'; [cite: 6]
             progressBar.style.width = '0%';
 
             emulator = new V86Starter({
@@ -99,27 +88,26 @@
                 cdrom: { url: cdromUrl } [cite: 7]
             });
 
-            // Realistic Progress Handling: Listens to serial output/boot events
+            // Realistic Progress Bar [cite: 30, 41]
+            emulator.add_listener("serial0-output-char", (char) => {
+                let current = parseInt(progressBar.style.width) || 0;
+                if (current < 95) {
+                    progressBar.style.width = (current + 1) + '%'; [cite: 42]
+                }
+                logOutput.textContent += char; [cite: 38]
+                logOutput.scrollTop = logOutput.scrollHeight;
+            });
+
             emulator.add_listener("emulator-ready", () => {
-                progressBar.style.width = '100%'; [cite: 8]
+                progressBar.style.width = '100%'; [cite: 8, 42]
                 setTimeout(() => {
                     progressEl.style.display = 'none'; [cite: 8]
                     setStatus("✅ Booted! Tap screen to focus.", "#0f0"); [cite: 8]
                 }, 800);
             });
-
-            // Capture all internal logs
-            emulator.add_listener("serial0-output-char", (char) => {
-                // Logic to update progress based on actual boot output instead of math.random 
-                if (progressBar.style.width !== '100%') {
-                    let current = parseInt(progressBar.style.width) || 0;
-                    if (current < 95) progressBar.style.width = (current + 1) + '%';
-                }
-                logOutput.textContent += char;
-                logOutput.scrollTop = logOutput.scrollHeight;
-            });
         }
 
+        // Stop Button Logic [cite: 35]
         function stopVM() {
             if (emulator) {
                 emulator.destroy(); [cite: 10]
@@ -129,18 +117,14 @@
             }
         }
 
+        // Fullscreen Logic [cite: 37]
         function toggleFullscreen() {
             const el = document.getElementById('screen_container');
-            if (!document.fullscreenElement) {
-                el.requestFullscreen().catch(err => {
-                    alert(`Error attempting to enable full-screen mode: ${err.message}`);
-                }); [cite: 12]
-            } else {
-                document.exitFullscreen(); [cite: 12]
-            }
+            if (!document.fullscreenElement) el.requestFullscreen(); [cite: 12]
+            else document.exitFullscreen(); [cite: 12]
         }
 
-        // Mobile focus handling
+        // Keyboard focus for mobile interactions [cite: 40]
         document.getElementById('screen_container').addEventListener('click', () => {
             if (emulator) emulator.keyboard_set_focus(true); [cite: 13]
         });
