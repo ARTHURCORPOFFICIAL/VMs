@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android VM in Browser</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            text-align: center;
+            overflow: hidden;
+        }
+        #screen_container {
+            border: 3px solid #0f0;
+            margin: 10px auto;
+            background: #000;
+            max-width: 100%;
+        }
+        .controls {
+            margin: 10px;
+        }
+        button, input { margin: 5px; padding: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Android in Browser (v86 Emulator)</h1>
+    <p>Old Android-x86 (4.4 recommended). Slow but works.</p>
+    
+    <div class="controls">
+        <button onclick="startAndroid()">Start Android 4.4</button>
+        <button onclick="startAndroid16()">Start Android 1.6</button>
+        <input type="file" id="isoInput" accept=".iso,.img">
+        <button onclick="loadCustomISO()">Load Custom ISO</button>
+    </div>
+
+    <div id="screen_container"></div>
+
+    <script src="https://copy.sh/v86/libv86.js"></script>
+    <script>
+        let emulator = null;
+
+        function createEmulator(cdromUrl) {
+            if (emulator) emulator.destroy();
+            
+            const screen = document.getElementById('screen_container');
+            emulator = new V86Starter({
+                wasm_path: "https://copy.sh/v86/v86.wasm",
+                screen_container: screen,
+                memory_size: 512 * 1024 * 1024,   // 512 MB
+                vga_memory_size: 32 * 1024 * 1024,
+                cdrom: { url: cdromUrl },
+                autostart: true,
+                // Enable network if supported
+                network_relay_server: "wss://relay.copy.sh/"
+            });
+        }
+
+        function startAndroid() {
+            // Pre-built Android 4.4 profile image (hosted by v86)
+            createEmulator("https://copy.sh/v86/images/android4.iso");  // Adjust if needed
+        }
+
+        function startAndroid16() {
+            createEmulator("https://copy.sh/v86/images/android.iso");
+        }
+
+        function loadCustomISO() {
+            const file = document.getElementById('isoInput').files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                createEmulator(url);
+            }
+        }
+
+        // Optional: Keyboard focus
+        document.addEventListener('click', () => {
+            if (emulator) emulator.keyboard_set_focus(true);
+        });
+    </script>
+</body>
+</html>
