@@ -21,13 +21,13 @@
             max-width: 100%; box-shadow: 0 0 30px #0f0;
         }
         #status { margin: 10px; min-height: 24px; color: #ff0; font-size: 15px; }
-        #progress { width: 60%; height: 12px; background: #222; margin: 10px auto; border: 1px solid #0f0; display: none; }
-        #progress-bar { height: 100%; width: 0%; background: linear-gradient(to right, #0f0, #0ff); transition: width 0.3s; }
+        #progress { width: 60%; height: 14px; background: #222; margin: 10px auto; border: 1px solid #0f0; display: none; }
+        #progress-bar { height: 100%; width: 0%; background: linear-gradient(to right, #0f0, #0ff); transition: width 0.2s; }
     </style>
 </head>
 <body>
-    <h1>🖥️ VMs in Browser</h1>
-    <p>Android x86 Emulator (v86) • Old versions only • Desktop recommended</p>
+    <h1>🖥️ VMs in Browser (v86)</h1>
+    <p>Android x86 • Old versions only • Desktop recommended</p>
     
     <div class="controls">
         <button onclick="startAndroid(1.6)">🚀 Android 1.6</button>
@@ -37,11 +37,9 @@
         <button onclick="loadCustomISO()">📂 Custom ISO</button>
         <button onclick="stopVM()">⛔ Stop VM</button>
         <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
-        <button onclick="saveState()">💾 Save State</button>
-        <button onclick="loadState()">📂 Load State</button>
     </div>
 
-    <div id="status">Ready - Click a button to boot</div>
+    <div id="status">Ready — Click a button to boot</div>
     <div id="progress"><div id="progress-bar"></div></div>
     <div id="screen_container"></div>
 
@@ -57,27 +55,14 @@
             statusEl.style.color = color;
         }
 
-        function simulateLoading() {
-            progressEl.style.display = 'block';
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 12;
-                if (progress > 95) progress = 95;
-                progressBar.style.width = progress + '%';
-                if (progress > 90) {
-                    clearInterval(interval);
-                }
-            }, 400);
-            return interval;
-        }
-
         function createEmulator(config) {
             if (emulator) emulator.destroy();
             
             const screen = document.getElementById('screen_container');
-            setStatus("Booting Android... (1-5 minutes)", "#0ff");
-            const loadingInterval = simulateLoading();
-            
+            setStatus("Downloading & Booting...", "#0ff");
+            progressEl.style.display = 'block';
+            progressBar.style.width = '0%';
+
             emulator = new V86Starter({
                 wasm_path: "https://copy.sh/v86/v86.wasm",
                 screen_container: screen,
@@ -88,28 +73,39 @@
                 ...config
             });
 
+            // Real progress from v86
+            emulator.add_listener("download-progress", (progress) => {
+                const percent = Math.floor((progress.loaded / progress.total) * 100) || 30;
+                progressBar.style.width = percent + '%';
+            });
+
             emulator.add_listener("emulator-ready", () => {
-                clearInterval(loadingInterval);
-                progressEl.style.display = 'none';
                 progressBar.style.width = '100%';
-                setStatus("✅ Booted! Click inside screen for keyboard/mouse", "#0f0");
+                setTimeout(() => {
+                    progressEl.style.display = 'none';
+                    setStatus("✅ Booted! Click inside the screen (mouse + keyboard)", "#0f0");
+                }, 800);
             });
         }
 
         function startAndroid(version) {
             setStatus(`Starting Android ${version}...`);
+            
             if (version === 1.6) {
-                createEmulator({ cdrom: { url: "https://copy.sh/v86/images/android.iso" } });
+                createEmulator({
+                    cdrom: { url: "https://copy.sh/v86/images/android.iso" }
+                });
             } else if (version === 4.4) {
-                createEmulator({ cdrom: { url: "https://copy.sh/v86/images/android4.iso" } });
+                createEmulator({
+                    cdrom: { url: "https://copy.sh/v86/images/android4.iso" }
+                });
             }
         }
 
         function loadCustomISO() {
             const file = document.getElementById('isoInput').files[0];
-            if (!file) return alert("Select an ISO first!");
+            if (!file) return alert("Please select an ISO file first!");
             const url = URL.createObjectURL(file);
-            setStatus("Loading custom ISO...");
             createEmulator({ cdrom: { url: url } });
         }
 
@@ -123,32 +119,15 @@
         }
 
         function toggleFullscreen() {
-            const screen = document.getElementById('screen_container');
+            const container = document.getElementById('screen_container');
             if (!document.fullscreenElement) {
-                screen.requestFullscreen();
+                container.requestFullscreen().catch(() => {});
             } else {
                 document.exitFullscreen();
             }
         }
 
-        // Basic save/load state (browser storage)
-        function saveState() {
-            if (!emulator) return alert("No running VM");
-            emulator.save_state().then(state => {
-                localStorage.setItem('androidVMState', JSON.stringify(Array.from(state)));
-                setStatus("State saved to browser storage", "#0f0");
-            });
-        }
-
-        function loadState() {
-            const saved = localStorage.getItem('androidVMState');
-            if (!saved || !emulator) return alert("No saved state or no VM running");
-            const state = new Uint8Array(JSON.parse(saved));
-            emulator.restore_state(state);
-            setStatus("State restored", "#0f0");
-        }
-
-        // Focus controls
+        // Click to focus
         document.getElementById('screen_container').addEventListener('click', () => {
             if (emulator) emulator.keyboard_set_focus(true);
         });
