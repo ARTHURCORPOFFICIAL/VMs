@@ -12,24 +12,22 @@
         button:hover { background:#0f0; color:#000; }
         #screen_container { border:3px solid #0f0; margin:10px auto; background:#000; max-width:100%; box-shadow:0 0 30px #0f0; }
         #status { margin:10px; min-height:24px; color:#ff0; font-size:15px; }
-        #progress { width:60%; height:14px; background:#222; margin:10px auto; border:1px solid #0f0; display:none; }
-        #progress-bar { height:100%; width:0%; background:linear-gradient(to right, #0f0, #0ff); transition:width 0.2s; }
+        #progress { width:60%; height:18px; background:#222; margin:10px auto; border:1px solid #0f0; display:none; border-radius:4px; overflow:hidden; }
+        #progress-bar { height:100%; width:0%; background:linear-gradient(to right, #0f0, #00ffff); transition:width 0.4s ease; }
     </style>
 </head>
 <body>
     <h1>🖥️ VMs in Browser (v86)</h1>
-    <p>Android 4.4 KitKat • File in same directory</p>
+    <p>Android 4.4 KitKat</p>
     
     <div class="controls">
         <button onclick="startAndroid44()">🚀 Start Android 4.4 KitKat</button>
         <br><br>
-        <input type="file" id="isoInput" accept=".iso,.img">
-        <button onclick="loadCustomISO()">📂 Custom ISO</button>
         <button onclick="stopVM()">⛔ Stop VM</button>
         <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
-    <div id="status">Ready — Click button to boot</div>
+    <div id="status">Ready</div>
     <div id="progress"><div id="progress-bar"></div></div>
     <div id="screen_container"></div>
 
@@ -45,13 +43,25 @@
             statusEl.style.color = color;
         }
 
+        function animateProgress() {
+            let progress = 5;
+            const interval = setInterval(() => {
+                progress += Math.random() * 7 + 3;
+                if (progress > 93) progress = 93;
+                progressBar.style.width = progress + '%';
+            }, 380);
+            return interval;
+        }
+
         function createEmulator(cdromUrl) {
             if (emulator) emulator.destroy();
             
             const screen = document.getElementById('screen_container');
-            setStatus("Loading Android 4.4 from repo... (first time will take a while)", "#0ff");
+            setStatus("Loading Android 4.4... (This can take 1-4 minutes)", "#0ff");
             progressEl.style.display = 'block';
             progressBar.style.width = '5%';
+
+            const loadingInterval = animateProgress();
 
             emulator = new V86Starter({
                 wasm_path: "https://copy.sh/v86/v86.wasm",
@@ -63,31 +73,18 @@
                 cdrom: { url: cdromUrl }
             });
 
-            emulator.add_listener("download-progress", (p) => {
-                if (p.total) {
-                    const percent = Math.floor((p.loaded / p.total) * 100) || 10;
-                    progressBar.style.width = percent + '%';
-                }
-            });
-
             emulator.add_listener("emulator-ready", () => {
+                clearInterval(loadingInterval);
                 progressBar.style.width = '100%';
                 setTimeout(() => {
                     progressEl.style.display = 'none';
-                    setStatus("✅ Booted! Click inside the black screen", "#0f0");
+                    setStatus("✅ Booted! Click inside the screen", "#0f0");
                 }, 800);
             });
         }
 
         function startAndroid44() {
-            // Relative path - same directory as index.html
-            createEmulator("./android-x86-4.4-r2.iso");
-        }
-
-        function loadCustomISO() {
-            const file = document.getElementById('isoInput').files[0];
-            if (!file) return alert("Please select an ISO first!");
-            createEmulator(URL.createObjectURL(file));
+            createEmulator("https://i.copy.sh/android4.iso");   // Reliable hosted image
         }
 
         function stopVM() {
