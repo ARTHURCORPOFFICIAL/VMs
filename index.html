@@ -5,41 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VMs - Browser Virtual Machines</title>
     <style>
-        body {
-            margin: 0; padding: 0; background: #0a0a0a; color: #0f0; font-family: monospace;
-            text-align: center; overflow: hidden;
-        }
-        h1 { margin: 15px; color: #0ff; }
-        .controls { margin: 15px; }
-        button, input {
-            margin: 5px; padding: 10px 16px; font-size: 16px;
-            background: #111; color: #0f0; border: 1px solid #0f0; cursor: pointer;
-        }
-        button:hover { background: #0f0; color: #000; }
-        #screen_container {
-            border: 3px solid #0f0; margin: 10px auto; background: #000;
-            max-width: 100%; box-shadow: 0 0 30px #0f0;
-        }
-        #status { margin: 10px; min-height: 24px; color: #ff0; font-size: 15px; }
-        #progress { width: 60%; height: 14px; background: #222; margin: 10px auto; border: 1px solid #0f0; display: none; }
-        #progress-bar { height: 100%; width: 0%; background: linear-gradient(to right, #0f0, #0ff); transition: width 0.2s; }
+        body { margin:0; padding:0; background:#0a0a0a; color:#0f0; font-family:monospace; text-align:center; overflow:hidden; }
+        h1 { margin:15px; color:#0ff; }
+        .controls { margin:15px; }
+        button, input { margin:5px; padding:10px 16px; font-size:16px; background:#111; color:#0f0; border:1px solid #0f0; cursor:pointer; }
+        button:hover { background:#0f0; color:#000; }
+        #screen_container { border:3px solid #0f0; margin:10px auto; background:#000; max-width:100%; box-shadow:0 0 30px #0f0; }
+        #status { margin:10px; min-height:24px; color:#ff0; font-size:15px; }
+        #progress { width:60%; height:14px; background:#222; margin:10px auto; border:1px solid #0f0; display:none; }
+        #progress-bar { height:100%; width:0%; background:linear-gradient(to right, #0f0, #0ff); transition:width 0.2s; }
     </style>
 </head>
 <body>
     <h1>🖥️ VMs in Browser (v86)</h1>
-    <p>Android x86 • Old versions only • Desktop recommended</p>
+    <p>Android 4.4 KitKat • Using your uploaded ISO</p>
     
     <div class="controls">
-        <button onclick="startAndroid(1.6)">🚀 Android 1.6</button>
-        <button onclick="startAndroid(4.4)">🚀 Android 4.4 KitKat</button>
-        <br>
+        <button onclick="startAndroid44()">🚀 Start Android 4.4 KitKat</button>
+        <br><br>
         <input type="file" id="isoInput" accept=".iso,.img">
         <button onclick="loadCustomISO()">📂 Custom ISO</button>
         <button onclick="stopVM()">⛔ Stop VM</button>
         <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
     </div>
 
-    <div id="status">Ready — Click a button to boot</div>
+    <div id="status">Ready — Click button to boot</div>
     <div id="progress"><div id="progress-bar"></div></div>
     <div id="screen_container"></div>
 
@@ -55,11 +45,11 @@
             statusEl.style.color = color;
         }
 
-        function createEmulator(config) {
+        function createEmulator(cdromUrl) {
             if (emulator) emulator.destroy();
             
             const screen = document.getElementById('screen_container');
-            setStatus("Downloading & Booting...", "#0ff");
+            setStatus("Downloading & Booting Android 4.4... (1-5 minutes)", "#0ff");
             progressEl.style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -70,43 +60,34 @@
                 vga_memory_size: 32 * 1024 * 1024,
                 autostart: true,
                 network_relay_server: "wss://relay.copy.sh/",
-                ...config
+                cdrom: { url: cdromUrl }
             });
 
-            // Real progress from v86
-            emulator.add_listener("download-progress", (progress) => {
-                const percent = Math.floor((progress.loaded / progress.total) * 100) || 30;
-                progressBar.style.width = percent + '%';
+            emulator.add_listener("download-progress", (p) => {
+                if (p.total) {
+                    const percent = Math.floor((p.loaded / p.total) * 100);
+                    progressBar.style.width = percent + '%';
+                }
             });
 
             emulator.add_listener("emulator-ready", () => {
                 progressBar.style.width = '100%';
                 setTimeout(() => {
                     progressEl.style.display = 'none';
-                    setStatus("✅ Booted! Click inside the screen (mouse + keyboard)", "#0f0");
+                    setStatus("✅ Booted! Click inside screen", "#0f0");
                 }, 800);
             });
         }
 
-        function startAndroid(version) {
-            setStatus(`Starting Android ${version}...`);
-            
-            if (version === 1.6) {
-                createEmulator({
-                    cdrom: { url: "https://copy.sh/v86/images/android.iso" }
-                });
-            } else if (version === 4.4) {
-                createEmulator({
-                    cdrom: { url: "https://copy.sh/v86/images/android4.iso" }
-                });
-            }
+        function startAndroid44() {
+            const url = "https://raw.githubusercontent.com/ARTHURCORPOFFICIAL/VMs/main/android-x86-4.4-r2.iso";
+            createEmulator(url);
         }
 
         function loadCustomISO() {
             const file = document.getElementById('isoInput').files[0];
-            if (!file) return alert("Please select an ISO file first!");
-            const url = URL.createObjectURL(file);
-            createEmulator({ cdrom: { url: url } });
+            if (!file) return alert("Please select an ISO first!");
+            createEmulator(URL.createObjectURL(file));
         }
 
         function stopVM() {
@@ -119,21 +100,13 @@
         }
 
         function toggleFullscreen() {
-            const container = document.getElementById('screen_container');
-            if (!document.fullscreenElement) {
-                container.requestFullscreen().catch(() => {});
-            } else {
-                document.exitFullscreen();
-            }
+            const el = document.getElementById('screen_container');
+            if (!document.fullscreenElement) el.requestFullscreen();
+            else document.exitFullscreen();
         }
 
-        // Click to focus
         document.getElementById('screen_container').addEventListener('click', () => {
             if (emulator) emulator.keyboard_set_focus(true);
-        });
-
-        document.addEventListener('keydown', e => {
-            if (e.key === "Escape" && emulator) emulator.keyboard_set_focus(false);
         });
     </script>
 </body>
