@@ -14,6 +14,7 @@
         #status { margin:10px; min-height:24px; color:#ff0; font-size:15px; }
         #progress { width:60%; height:18px; background:#222; margin:10px auto; border:1px solid #0f0; display:none; border-radius:4px; overflow:hidden; }
         #progress-bar { height:100%; width:0%; background:linear-gradient(to right, #0f0, #00ffff); transition:width 0.4s ease; }
+        canvas { display: block; margin: 0 auto; }
     </style>
 </head>
 <body>
@@ -57,7 +58,7 @@
             if (emulator) emulator.destroy();
             
             const screen = document.getElementById('screen_container');
-            setStatus("Loading Android 4.4... (This can take 1-4 minutes)", "#0ff");
+            setStatus("Loading local file: android-x86-4.4-RC1... (Wait for it)", "#0ff");
             progressEl.style.display = 'block';
             progressBar.style.width = '5%';
 
@@ -70,6 +71,7 @@
                 vga_memory_size: 32 * 1024 * 1024,
                 autostart: true,
                 network_relay_server: "wss://relay.copy.sh/",
+                // Pointing to your local file in the repo
                 cdrom: { url: cdromUrl }
             });
 
@@ -78,13 +80,15 @@
                 progressBar.style.width = '100%';
                 setTimeout(() => {
                     progressEl.style.display = 'none';
-                    setStatus("✅ Booted! Click inside the screen", "#0f0");
+                    setStatus("✅ Booted! Click inside the screen. Use arrows to select Live CD.", "#0f0");
                 }, 800);
             });
         }
 
         function startAndroid44() {
-            createEmulator("https://i.copy.sh/android4.iso");   // Reliable hosted image
+            // Updated to point to your specific filename in the same folder
+            // Make sure the file extension matches (e.g., .iso)
+            createEmulator("./android-x86-4.4-RC1.iso"); 
         }
 
         function stopVM() {
