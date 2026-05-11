@@ -19,66 +19,128 @@
             margin: 10px auto;
             background: #000;
             max-width: 100%;
+            box-shadow: 0 0 20px #0f0;
         }
         .controls {
-            margin: 10px;
+            margin: 15px;
         }
-        button, input { margin: 5px; padding: 8px; }
+        button, input {
+            margin: 5px;
+            padding: 10px 16px;
+            font-size: 16px;
+            background: #111;
+            color: #0f0;
+            border: 1px solid #0f0;
+            cursor: pointer;
+        }
+        button:hover { background: #0f0; color: #000; }
+        #status {
+            margin: 10px;
+            min-height: 20px;
+            color: #ff0;
+        }
     </style>
 </head>
 <body>
     <h1>Android in Browser (v86 Emulator)</h1>
-    <p>Old Android-x86 (4.4 recommended). Slow but works.</p>
+    <p>Old Android-x86 versions only • Best on desktop</p>
     
     <div class="controls">
-        <button onclick="startAndroid()">Start Android 4.4</button>
-        <button onclick="startAndroid16()">Start Android 1.6</button>
+        <button onclick="startAndroid(1.6)">🚀 Start Android 1.6</button>
+        <button onclick="startAndroid(4.4)">🚀 Start Android 4.4</button>
+        <br>
         <input type="file" id="isoInput" accept=".iso,.img">
-        <button onclick="loadCustomISO()">Load Custom ISO</button>
+        <button onclick="loadCustomISO()">📂 Load Custom ISO</button>
+        <button onclick="stopVM()">⛔ Stop VM</button>
     </div>
 
+    <div id="status"></div>
     <div id="screen_container"></div>
 
     <script src="https://copy.sh/v86/libv86.js"></script>
     <script>
         let emulator = null;
+        const statusEl = document.getElementById('status');
 
-        function createEmulator(cdromUrl) {
-            if (emulator) emulator.destroy();
+        function setStatus(msg, color = '#ff0') {
+            statusEl.textContent = msg;
+            statusEl.style.color = color;
+        }
+
+        function createEmulator(config) {
+            if (emulator) {
+                emulator.destroy();
+            }
             
             const screen = document.getElementById('screen_container');
+            setStatus("Booting... (can take 1-5 minutes)", "#0ff");
+            
             emulator = new V86Starter({
                 wasm_path: "https://copy.sh/v86/v86.wasm",
                 screen_container: screen,
                 memory_size: 512 * 1024 * 1024,   // 512 MB
                 vga_memory_size: 32 * 1024 * 1024,
-                cdrom: { url: cdromUrl },
                 autostart: true,
-                // Enable network if supported
-                network_relay_server: "wss://relay.copy.sh/"
+                network_relay_server: "wss://relay.copy.sh/",
+                ...config
+            });
+
+            emulator.add_listener("emulator-ready", () => {
+                setStatus("✅ Emulator ready – click inside the screen", "#0f0");
+            });
+
+            emulator.add_listener("cpu-usage", (usage) => {
+                if (usage > 80) console.log("High CPU usage:", usage);
             });
         }
 
-        function startAndroid() {
-            // Pre-built Android 4.4 profile image (hosted by v86)
-            createEmulator("https://copy.sh/v86/images/android4.iso");  // Adjust if needed
-        }
-
-        function startAndroid16() {
-            createEmulator("https://copy.sh/v86/images/android.iso");
+        function startAndroid(version) {
+            setStatus(`Starting Android ${version}...`);
+            
+            if (version === 1.6) {
+                // Uses the built-in profile configuration from v86
+                createEmulator({
+                    // You can also use direct image URLs if available, but profiles are easier
+                    cdrom: { url: "https://copy.sh/v86/images/android.iso" } // May need exact path
+                });
+            } else if (version === 4.4) {
+                createEmulator({
+                    cdrom: { url: "https://copy.sh/v86/images/android4.iso" }
+                });
+            }
         }
 
         function loadCustomISO() {
             const file = document.getElementById('isoInput').files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                createEmulator(url);
+            if (!file) {
+                alert("Please select an ISO file first");
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            setStatus("Loading custom ISO...");
+            createEmulator({ cdrom: { url: url } });
+        }
+
+        function stopVM() {
+            if (emulator) {
+                emulator.destroy();
+                emulator = null;
+                setStatus("VM stopped", "#f00");
             }
         }
 
-        // Optional: Keyboard focus
-        document.addEventListener('click', () => {
-            if (emulator) emulator.keyboard_set_focus(true);
+        // Click to focus keyboard/mouse
+        document.getElementById('screen_container').addEventListener('click', () => {
+            if (emulator) {
+                emulator.keyboard_set_focus(true);
+            }
+        });
+
+        // Keyboard shortcut: Esc to release mouse
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape" && emulator) {
+                emulator.keyboard_set_focus(false);
+            }
         });
     </script>
 </body>
